@@ -3,30 +3,14 @@
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal
 
+from datacanary.results import ValidationError, ValidationResult
+
 ColumnType = Literal["string", "number", "date", "boolean"]
 Schema = dict[str, dict[str, Any]]
-
-
-@dataclass(frozen=True)
-class ValidationError:
-    """A single CSV validation failure."""
-
-    row: int
-    column: str
-    message: str
-
-
-@dataclass(frozen=True)
-class ValidationResult:
-    """Structured result returned by CSV validation."""
-
-    passed: bool
-    errors: list[ValidationError]
 
 
 def validate_csv(path: str | Path, schema: Schema) -> ValidationResult:
@@ -48,7 +32,7 @@ def validate_csv(path: str | Path, schema: Schema) -> ValidationResult:
                 )
 
         if errors:
-            return ValidationResult(passed=False, errors=errors)
+            return ValidationResult(errors=errors)
 
         for row_number, row in enumerate(reader, start=2):
             for column, rules in schema.items():
@@ -76,7 +60,7 @@ def validate_csv(path: str | Path, schema: Schema) -> ValidationResult:
                         )
                     )
 
-    return ValidationResult(passed=len(errors) == 0, errors=errors)
+    return ValidationResult(errors=errors)
 
 
 def _is_valid_type(value: str, expected_type: Any) -> bool:

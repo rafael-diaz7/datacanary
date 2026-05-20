@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+from collections.abc import Iterable
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal
@@ -13,6 +14,25 @@ ColumnType = Literal["string", "number", "date", "boolean"]
 Schema = dict[str, dict[str, Any]]
 
 
+def validate_required_columns(
+    columns: Iterable[str],
+    schema: Schema,
+) -> ValidationResult:
+    """Validate that all required schema columns are present."""
+    column_names = set(columns)
+    errors = [
+        ValidationError(
+            row=None,
+            column=column,
+            message=f"Missing required column: {column}",
+        )
+        for column, rules in schema.items()
+        if rules.get("required") is True and column not in column_names
+    ]
+
+    return ValidationResult(errors=errors)
+
+
 def validate_csv(path: str | Path, schema: Schema) -> ValidationResult:
     """Validate a CSV file against a simple column schema."""
     errors: list[ValidationError] = []
@@ -21,15 +41,8 @@ def validate_csv(path: str | Path, schema: Schema) -> ValidationResult:
         reader = csv.DictReader(csv_file)
         fieldnames = reader.fieldnames or []
 
-        for column, rules in schema.items():
-            if rules.get("required") is True and column not in fieldnames:
-                errors.append(
-                    ValidationError(
-                        row=0,
-                        column=column,
-                        message="Missing required column.",
-                    )
-                )
+        column_result = validate_required_columns(fieldnames, schema)
+        errors.extend(column_result.errors)
 
         if errors:
             return ValidationResult(errors=errors)

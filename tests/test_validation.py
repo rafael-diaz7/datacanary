@@ -1,4 +1,75 @@
 from datacanary import ValidationError, validate_csv
+from datacanary.validation import validate_required_columns
+
+
+def test_required_columns_present_passes() -> None:
+    result = validate_required_columns(
+        ["name", "amount"],
+        {
+            "name": {"required": True},
+            "amount": {"required": True},
+        },
+    )
+
+    assert result.passed is True
+    assert result.errors == []
+
+
+def test_missing_required_column_fails() -> None:
+    result = validate_required_columns(
+        ["name"],
+        {
+            "name": {"required": True},
+            "amount": {"required": True},
+        },
+    )
+
+    assert result.passed is False
+    assert result.errors == [
+        ValidationError(
+            row=None,
+            column="amount",
+            message="Missing required column: amount",
+        )
+    ]
+
+
+def test_missing_optional_column_passes() -> None:
+    result = validate_required_columns(
+        ["name"],
+        {
+            "name": {"required": True},
+            "nickname": {"required": False},
+        },
+    )
+
+    assert result.passed is True
+    assert result.errors == []
+
+
+def test_multiple_missing_required_columns_return_multiple_errors() -> None:
+    result = validate_required_columns(
+        ["name"],
+        {
+            "name": {"required": True},
+            "amount": {"required": True},
+            "created_at": {"required": True},
+        },
+    )
+
+    assert result.passed is False
+    assert result.errors == [
+        ValidationError(
+            row=None,
+            column="amount",
+            message="Missing required column: amount",
+        ),
+        ValidationError(
+            row=None,
+            column="created_at",
+            message="Missing required column: created_at",
+        ),
+    ]
 
 
 def test_valid_csv_passes(tmp_path) -> None:
@@ -39,9 +110,9 @@ def test_missing_required_column_fails_before_row_validation(tmp_path) -> None:
     assert result.passed is False
     assert result.errors == [
         ValidationError(
-            row=0,
+            row=None,
             column="amount",
-            message="Missing required column.",
+            message="Missing required column: amount",
         )
     ]
 

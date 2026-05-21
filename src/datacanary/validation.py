@@ -33,6 +33,26 @@ def validate_required_columns(
     return ValidationResult(errors=errors)
 
 
+def validate_csv_headers(path: str | Path, schema: Schema) -> ValidationResult:
+    """Validate required columns using only the CSV header row."""
+    with Path(path).open(newline="", encoding="utf-8") as csv_file:
+        reader = csv.reader(csv_file)
+        headers = next(reader, None)
+
+    if not headers:
+        return ValidationResult(
+            errors=[
+                ValidationError(
+                    row=None,
+                    column=None,
+                    message="CSV file is empty or missing a header row",
+                )
+            ]
+        )
+
+    return validate_required_columns(headers, schema)
+
+
 def validate_csv(path: str | Path, schema: Schema) -> ValidationResult:
     """Validate a CSV file against a simple column schema."""
     errors: list[ValidationError] = []

@@ -1,4 +1,4 @@
-from datacanary import ValidationError, validate_csv
+from datacanary import ValidationError, validate_csv, validate_csv_headers
 from datacanary.validation import validate_required_columns
 
 
@@ -69,6 +69,81 @@ def test_multiple_missing_required_columns_return_multiple_errors() -> None:
             column="created_at",
             message="Missing required column: created_at",
         ),
+    ]
+
+
+def test_valid_csv_headers_pass(tmp_path) -> None:
+    csv_path = tmp_path / "valid_headers.csv"
+    csv_path.write_text("name,amount\nAda,12.5\n", encoding="utf-8")
+
+    result = validate_csv_headers(
+        csv_path,
+        {
+            "name": {"required": True},
+            "amount": {"required": True},
+        },
+    )
+
+    assert result.passed is True
+    assert result.errors == []
+
+
+def test_missing_required_csv_header_fails(tmp_path) -> None:
+    csv_path = tmp_path / "missing_required_header.csv"
+    csv_path.write_text("name\nAda\n", encoding="utf-8")
+
+    result = validate_csv_headers(
+        csv_path,
+        {
+            "name": {"required": True},
+            "amount": {"required": True},
+        },
+    )
+
+    assert result.passed is False
+    assert result.errors == [
+        ValidationError(
+            row=None,
+            column="amount",
+            message="Missing required column: amount",
+        )
+    ]
+
+
+def test_missing_optional_csv_header_passes(tmp_path) -> None:
+    csv_path = tmp_path / "missing_optional_header.csv"
+    csv_path.write_text("name\nAda\n", encoding="utf-8")
+
+    result = validate_csv_headers(
+        csv_path,
+        {
+            "name": {"required": True},
+            "nickname": {"required": False},
+        },
+    )
+
+    assert result.passed is True
+    assert result.errors == []
+
+
+def test_empty_csv_header_validation_fails_clearly(tmp_path) -> None:
+    csv_path = tmp_path / "empty.csv"
+    csv_path.write_text("", encoding="utf-8")
+
+    result = validate_csv_headers(
+        csv_path,
+        {
+            "name": {"required": True},
+        },
+    )
+
+    assert result.passed is False
+    assert result.errors == [
+        ValidationError(
+            row=None,
+            column=None,
+            message="CSV file is empty or missing a header row",
+        )
     ]
 
 
